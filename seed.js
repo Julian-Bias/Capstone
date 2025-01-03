@@ -1,15 +1,19 @@
 require("dotenv").config();
-const db = require("./db");
+const db = require("./server/db");
 const bcrypt = require("bcrypt");
 const uuid = require("uuid");
 
 const seedData = async () => {
   try {
     await db.client.connect();
+    console.log("Connected to the database.");
 
-    console.log("Seeding database...");
+    // Create tables before seeding data
+    console.log("Creating tables...");
+    await db.createTables();
 
     // Clear existing data
+    console.log("Clearing existing data...");
     await db.client.query("DELETE FROM comments;");
     await db.client.query("DELETE FROM reviews;");
     await db.client.query("DELETE FROM games;");
@@ -17,6 +21,7 @@ const seedData = async () => {
     await db.client.query("DELETE FROM users;");
 
     // Seed Users
+    console.log("Seeding users...");
     const hashedPassword = await bcrypt.hash("password123", 10);
     const user1 = await db.createUser({
       username: "user1",
@@ -33,12 +38,14 @@ const seedData = async () => {
     console.log("Users seeded:", [user1, user2]);
 
     // Seed Categories
+    console.log("Seeding categories...");
     const category1 = await db.createCategory("Action");
     const category2 = await db.createCategory("Adventure");
     const category3 = await db.createCategory("Simulation");
     console.log("Categories seeded:", [category1, category2, category3]);
 
     // Seed Games
+    console.log("Seeding games...");
     const game1 = await db.createGame({
       title: "Game One",
       description: "An exciting action game.",
@@ -56,6 +63,7 @@ const seedData = async () => {
     console.log("Games seeded:", [game1, game2]);
 
     // Seed Reviews
+    console.log("Seeding reviews...");
     const review1 = await db.createReview({
       game_id: game1.id,
       user_id: user1.id,
@@ -71,6 +79,7 @@ const seedData = async () => {
     console.log("Reviews seeded:", [review1, review2]);
 
     // Seed Comments
+    console.log("Seeding comments...");
     const comment1 = await db.createComment({
       review_id: review1.id,
       user_id: user2.id,
@@ -83,11 +92,12 @@ const seedData = async () => {
     });
     console.log("Comments seeded:", [comment1, comment2]);
 
-    console.log("Database seeding completed.");
+    console.log("Database seeding completed successfully.");
   } catch (err) {
     console.error("Error seeding database:", err);
   } finally {
     await db.client.end();
+    console.log("Database connection closed.");
   }
 };
 
