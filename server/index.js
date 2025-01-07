@@ -66,6 +66,39 @@ app.get("/api/games/:id", async (req, res) => {
   }
 });
 
+// Get games with search and filter
+app.get("/api/games", async (req, res) => {
+  const { search, category } = req.query;
+  try {
+    let SQL = `
+      SELECT g.*, c.name AS category_name, 
+             (SELECT AVG(rating) FROM reviews WHERE game_id = g.id) AS average_rating
+      FROM games g
+      LEFT JOIN categories c ON g.category_id = c.id
+    `;
+    const params = [];
+
+    if (search || category) {
+      SQL += " WHERE";
+      if (search) {
+        SQL += " LOWER(g.title) LIKE $1";
+        params.push(`%${search.toLowerCase()}%`);
+      }
+      if (category) {
+        if (params.length > 0) SQL += " AND";
+        SQL += " c.id = $2";
+        params.push(category);
+      }
+    }
+
+    const games = await db.client.query(SQL, params);
+    res.json(games.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching games");
+  }
+});
+
 //  Register a new user
 app.post("/api/register", async (req, res) => {
   const { username, email, password } = req.body;
@@ -80,6 +113,35 @@ app.post("/api/register", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error registering user");
+  }
+});
+
+// Fetch user profile
+app.get("/api/users/me", authenticateToken, async (req, res) => {
+  try {
+    const SQL = `SELECT id, username, email, role, created_at FROM users WHERE id = $1`;
+    const user = await db.client.query(SQL, [req.user.id]);
+    res.json(user.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching user profile");
+  }
+});
+
+// Update user profile
+app.put("/api/users/me", authenticateToken, async (req, res) => {
+  const { username, email } = req.body;
+  try {
+    const SQL = `
+      UPDATE users 
+      SET username = $1, email = $2 
+      WHERE id = $3 RETURNING id, username, email, role, created_at
+    `;
+    const result = await db.client.query(SQL, [username, email, req.user.id]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating user profile");
   }
 });
 
@@ -107,6 +169,70 @@ app.post("/api/login", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error logging in");
+  }
+});
+
+// **Create a category **Admin
+app.post("/api/categories", authenticateToken, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).send("Access denied");
+
+  const { name } = req.body;
+  try {
+    const category = await db.createCategory(name);
+    res.status(201).json(category);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error creating category");
+  }
+});
+
+// **Edit a category **Admin
+app.put("/api/categories/:id", authenticateToken, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).send("Access denied");
+
+  const { id } = req.params;
+  const { name } = req.body;
+
+  try {
+    const SQL = `
+      UPDATE categories 
+      SET name = $1 
+      WHERE id = $2 RETURNING *
+    `;
+    const result = await db.client.query(SQL, [name, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).send("Category not found");
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error editing category");
+  }
+});
+
+// **Delete a category **Admin
+app.delete("/api/categories/:id", authenticateToken, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).send("Access denied");
+
+  const { id } = req.params;
+
+  try {
+    const SQL = `
+      DELETE FROM categories 
+      WHERE id = $1 RETURNING *
+    `;
+    const result = await db.client.query(SQL, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).send("Category not found");
+    }
+
+    res.status(204).send(); // No content to send back
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error deleting category");
   }
 });
 
@@ -148,6 +274,28 @@ app.put("/api/reviews/:id", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error editing review");
+  }
+});
+
+// Fetch user reviews
+app.get("/api/users/:id/reviews", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (id !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).send("Access denied");
+    }
+
+    const SQL = `
+      SELECT r.*, g.title AS game_title
+      FROM reviews r
+      JOIN games g ON r.game_id = g.id
+      WHERE r.user_id = $1
+    `;
+    const reviews = await db.client.query(SQL, [id]);
+    res.json(reviews.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching user reviews");
   }
 });
 
