@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 const GamesList = () => {
   const [games, setGames] = useState([]);
@@ -31,7 +32,9 @@ const GamesList = () => {
       <ul>
         {games.map((game) => (
           <li key={game.id}>
-            <h2>{game.title}</h2>
+            <h2>
+              <Link to={`/games/${game.id}`}>{game.title}</Link>
+            </h2>
             <p>{game.description}</p>
             <p>Average Rating: {game.average_rating.toFixed(2)}</p>
           </li>

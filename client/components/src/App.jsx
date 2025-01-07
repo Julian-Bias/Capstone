@@ -4,6 +4,7 @@ import GamesList from "./GamesList";
 import GameDetails from "./GameDetails";
 import Register from "./Register";
 import Login from "./Login";
+import ProtectedRoute from "./ProtectedRoute";
 
 const App = () => {
   return (
@@ -27,6 +28,15 @@ const App = () => {
           <Route path="/games/:id" element={<GameDetails />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route
+            path="/write-review"
+            element={
+              <ProtectedRoute
+                element={<WriteReview />}
+                isAuthenticated={isLoggedIn}
+              />
+            }
+          />
         </Routes>
       </div>
     </Router>
