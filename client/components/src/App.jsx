@@ -5,6 +5,8 @@ import GameDetails from "./GameDetails";
 import Register from "./Register";
 import Login from "./Login";
 import ProtectedRoute from "./ProtectedRoute";
+import WriteReview from "./WriteReview";
+import Navbar from "./Navbar";
 
 const App = () => {
   return (
@@ -23,6 +25,7 @@ const App = () => {
             </li>
           </ul>
         </nav>
+        <Navbar />
         <Routes>
           <Route path="/" element={<GamesList />} />
           <Route path="/games/:id" element={<GameDetails />} />
@@ -36,6 +39,10 @@ const App = () => {
                 isAuthenticated={isLoggedIn}
               />
             }
+          />
+          <Route
+            path="/write-review"
+            element={<ProtectedRoute element={<WriteReview />} />}
           />
         </Routes>
       </div>
